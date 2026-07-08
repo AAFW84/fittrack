@@ -354,7 +354,7 @@ function histHTML(ejId){
   const barras=h.slice(-8).map(r=>{
     const alt=Math.max(6,Math.round(r.peso/max*44));
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
-      <div style="font-size:9px;color:var(--mut)">${r.peso}</div>
+      <div style="font-size:9px;color:var(--mut)">${fmtPeso(r.peso)}</div>
       <div style="width:70%;height:${alt}px;background:var(--green);border-radius:3px"></div>
       <div style="font-size:8px;color:var(--mut)">${r.fecha.slice(5)}</div>
     </div>`;}).join("");
