@@ -68,13 +68,19 @@ const IMGS = {
    ============================================================ */
 const KCAL=2200, PROT=180, AGUA_META=8;
 const DIAS=["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
-const hoyISO=()=>new Date().toISOString().slice(0,10);
+const hoyISO=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
 
 /* ---- Almacenamiento persistente (localStorage) ---- */
 const DB={
   get(k){try{const v=localStorage.getItem("ft_"+k);return v?JSON.parse(v):null}catch{return null}},
   set(k,v){try{localStorage.setItem("ft_"+k,JSON.stringify(v))}catch(e){console.error(e)}}
 };
+
+let UNIDAD=DB.get("unidad")||"kg";
+const KG2LB=2.20462;
+function unidadLabel(){return UNIDAD==="kg"?"kg":"lb";}
+function fmtPeso(kg){if(kg===undefined||kg===null||kg==="")return "";const n=parseFloat(kg);if(isNaN(n))return "";const v=UNIDAD==="kg"?n:n*KG2LB;return Math.round(v*10)/10;}
+function pesoToKg(val){if(val===undefined||val===null||val==="")return null;const n=parseFloat(val);if(isNaN(n))return null;const v=UNIDAD==="kg"?n:n/KG2LB;return Math.round(v*100)/100;}
 
 /* ---- Guías: texto exacto del usuario (Máquina / Movimiento / Alternativa) ---- */
 const G={
@@ -352,7 +358,7 @@ function histHTML(ejId){
       <div style="width:70%;height:${alt}px;background:var(--green);border-radius:3px"></div>
       <div style="font-size:8px;color:var(--mut)">${r.fecha.slice(5)}</div>
     </div>`;}).join("");
-  const flecha=delta!=null?(delta>0?`<span style="color:var(--green)">▲ +${delta.toFixed(1)} kg</span>`:delta<0?`<span style="color:var(--amber)">▼ ${delta.toFixed(1)} kg</span>`:`<span style="color:var(--mut)">= igual</span>`):"";
+  const flecha=delta!=null?(delta>0?`<span style="color:var(--green)">▲ +${fmtPeso(delta).toFixed(1)} ${unidadLabel()}</span>`:delta<0?`<span style="color:var(--amber)">▼ ${fmtPeso(delta).toFixed(1)} ${unidadLabel()}</span>`:`<span style="color:var(--mut)">= igual</span>`):"";
   return `<div style="background:#12171A;border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:6px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
       <div class="tag" style="color:var(--mut)">HISTORIAL DE FUERZA</div>${flecha}
@@ -367,7 +373,7 @@ function vHoy(){
   const tot=r.ej.length, hechos=r.ej.filter(e=>log.done[e.id]).length;
   const hcom=DIETA.filter(c=>log.comidas[c.id]).length;
   const prog=Math.round(((hechos/tot)*0.5+(hcom/DIETA.length)*0.35+(Math.min(log.agua,AGUA_META)/AGUA_META)*0.15)*100);
-  const per=(medidas.length&&medidas[0].peso&&medidas[medidas.length-1].peso)?(medidas[0].peso-medidas[medidas.length-1].peso).toFixed(1):null;
+  const per=(medidas.length&&medidas[0].peso&&medidas[medidas.length-1].peso)?fmtPeso(medidas[0].peso-medidas[medidas.length-1].peso).toFixed(1):null;
   const R=52,circ=2*Math.PI*R,off=circ*(1-prog/100);
   const ring=`<svg width="130" height="130" viewBox="0 0 130 130">
     <circle cx="65" cy="65" r="${R}" stroke="var(--line)" stroke-width="10" fill="none"/>
@@ -376,7 +382,7 @@ function vHoy(){
     <text x="65" y="80" text-anchor="middle" fill="var(--mut)" font-size="10" letter-spacing="1.5">DÍA</text></svg>`;
   const tabsDia=[1,2,3,4,5,6,0].map(d=>`<button class="pill ${ST.dow===d?'on':''}" data-dow="${d}">${DIAS[d].slice(0,3)}</button>`).join("");
   const filas=r.ej.map(e=>{
-    const wk=e.peso?`<input class="inp" data-wpeso="${e.id}" inputmode="decimal" placeholder="kg" value="${log.pesos[e.id]||''}" style="width:62px;padding:8px 6px;text-align:center;font-size:14px">`:"";
+    const wk=e.peso?`<input class="inp" data-wpeso="${e.id}" inputmode="decimal" placeholder="${unidadLabel()}" value="${fmtPeso(log.pesos[e.id])||''}" style="width:62px;padding:8px 6px;text-align:center;font-size:14px">`:"";
     const btnG=e.g&&G[e.g]&&G[e.g].maq?`<button class="btn2" data-guia="${e.id}" style="padding:4px 10px;font-size:11.5px;margin-top:6px;border-color:${ST.abierto===e.id?'var(--green)':'var(--line)'};color:${ST.abierto===e.id?'var(--green)':'var(--mut)'}">${ST.abierto===e.id?'▲ Ocultar guía':'▼ Ver máquina y movimiento'}</button>`:"";
     const done=log.done[e.id];
     return `<div style="padding:11px 0;border-bottom:1px solid var(--line)">
@@ -395,7 +401,7 @@ function vHoy(){
       <div style="flex:1">
         <div style="font-size:15px;font-weight:800">${esc(r.titulo)}</div>
         <div class="small" style="margin-top:4px">${hechos}/${tot} ejercicios · ${hcom}/${DIETA.length} comidas · ${log.agua}/${AGUA_META} vasos</div>
-        ${per?`<div style="color:var(--amber);font-size:13px;margin-top:6px;font-weight:700">▼ ${per} kg desde el inicio</div>`:""}
+        ${per?`<div style="color:var(--amber);font-size:13px;margin-top:6px;font-weight:700">▼ ${per} ${unidadLabel()} desde el inicio</div>`:""}
       </div></div>
     <div style="display:flex;gap:6px;margin:0 14px;overflow-x:auto;padding-bottom:4px">${tabsDia}</div>
     <div class="card"><div class="h2">Rutina · ${esc(r.titulo)}</div>${filas}</div>`;
@@ -438,13 +444,13 @@ function vDieta(){
 }
 
 function vProgreso(){
-  const filas=medidas.slice().reverse().slice(0,8).map(m=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13.5px"><span style="color:var(--mut)">${m.fecha}</span><span>${m.peso?m.peso+' kg':'—'} · ${m.cintura?m.cintura+' cm':'—'}</span></div>`).join("");
+  const filas=medidas.slice().reverse().slice(0,8).map(m=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13.5px"><span style="color:var(--mut)">${m.fecha}</span><span>${m.peso?fmtPeso(m.peso)+' '+unidadLabel():'—'} · ${m.cintura?m.cintura+' cm':'—'}</span></div>`).join("");
   let chart="";
   if(medidas.length){
-    const ps=medidas.filter(m=>m.peso).map(m=>m.peso);
+    const ps=medidas.filter(m=>m.peso).map(m=>fmtPeso(m.peso));
     const mn=Math.min(...ps)-1,mx=Math.max(...ps)+1;
     const W=480,H=160,pad=30;
-    const pts=medidas.filter(m=>m.peso);
+    const pts=medidas.filter(m=>m.peso).map(m=>({...m,peso:fmtPeso(m.peso)}));
     const xs=(i)=>pad+(pts.length<2?0:i*(W-2*pad)/(pts.length-1));
     const ys=(v)=>H-pad-((v-mn)/(mx-mn||1))*(H-2*pad);
     const path=pts.map((m,i)=>`${i?'L':'M'}${xs(i)},${ys(m.peso)}`).join(" ");
@@ -453,8 +459,8 @@ function vProgreso(){
     chart=`<div class="card"><div class="h2">Evolución de peso</div><svg viewBox="0 0 ${W} ${H}" width="100%"><path d="${path}" stroke="var(--green)" stroke-width="3" fill="none"/>${dots}${labs}<text x="4" y="${ys(mx)+4}" font-size="9" fill="var(--mut)">${mx.toFixed(0)}</text><text x="4" y="${ys(mn)+4}" font-size="9" fill="var(--mut)">${mn.toFixed(0)}</text></svg><div style="margin-top:8px">${filas}</div></div>`;
   }
   const metas=METAS.map(m=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px"><span style="color:var(--mut)">${m.n}</span><span><span style="color:var(--mut)">${m.de}</span> <span style="color:var(--green);font-weight:800">→ ${m.a}</span></span></div>`).join("");
-  return `<div class="card"><div class="h2">Registrar medición semanal</div>
-      <div style="display:flex;gap:8px;margin-bottom:10px"><input class="inp" id="inPeso" inputmode="decimal" placeholder="Peso (kg)"><input class="inp" id="inCint" inputmode="decimal" placeholder="Cintura (cm)"></div>
+  return `<div class="card"><div class="h2">Unidad de peso</div><div style="display:flex;gap:8px"><button class="pill ${UNIDAD==='kg'?'on':''}" data-unidad="kg">Kilogramos (kg)</button><button class="pill ${UNIDAD==='lb'?'on':''}" data-unidad="lb">Libras (lb)</button></div></div><div class="card"><div class="h2">Registrar medición semanal</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px"><input class="inp" id="inPeso" inputmode="decimal" placeholder="Peso (${unidadLabel()})"><input class="inp" id="inCint" inputmode="decimal" placeholder="Cintura (cm)"></div>
       <button class="btn" id="guardarMedida">Guardar medición</button>
       <div class="small" style="margin-top:8px">Ideal: sábado en ayunas, misma báscula, cintura al ombligo.</div></div>
     ${chart}
@@ -509,7 +515,7 @@ function wire(){
   document.querySelectorAll("[data-sub]").forEach(b=>b.onclick=()=>{ST.subDieta=b.dataset.sub;ST.edit=false;render()});
   document.querySelectorAll("[data-ej]").forEach(b=>b.onclick=()=>{const id=b.dataset.ej;log.done[id]=!log.done[id];if(log.done[id]&&log.pesos[id])registrarPeso(id,log.pesos[id]);saveLog();render()});
   document.querySelectorAll("[data-guia]").forEach(b=>b.onclick=()=>{const id=b.dataset.guia;ST.abierto=ST.abierto===id?null:id;render()});
-  document.querySelectorAll("[data-wpeso]").forEach(inp=>inp.onchange=()=>{const id=inp.dataset.wpeso;log.pesos[id]=inp.value;saveLog();if(log.done[id])registrarPeso(id,inp.value)});
+  document.querySelectorAll("[data-wpeso]").forEach(inp=>inp.onchange=()=>{const id=inp.dataset.wpeso;const kgVal=pesoToKg(inp.value);log.pesos[id]=kgVal;saveLog();if(log.done[id])registrarPeso(id,kgVal)});
   document.querySelectorAll("[data-com]").forEach(b=>b.onclick=()=>{const id=b.dataset.com;log.comidas[id]=!log.comidas[id];saveLog();render()});
   document.querySelectorAll("[data-agua]").forEach(b=>b.onclick=()=>{const n=+b.dataset.agua;log.agua=(n===log.agua)?n-1:n;saveLog();render()});
   document.querySelectorAll("[data-compra]").forEach(b=>b.onclick=()=>{const id=b.dataset.compra;compras[id]=!compras[id];DB.set("compras",compras);render()});
@@ -518,11 +524,12 @@ function wire(){
   const gm=document.getElementById("guardarMedida");if(gm)gm.onclick=()=>{
     const p=parseFloat(document.getElementById("inPeso").value),c=parseFloat(document.getElementById("inCint").value);
     if(!p&&!c)return;
-    medidas=medidas.filter(m=>m.fecha!==ST.fecha);medidas.push({fecha:ST.fecha,peso:p||null,cintura:c||null});
+    medidas=medidas.filter(m=>m.fecha!==ST.fecha);medidas.push({fecha:ST.fecha,peso:p?pesoToKg(p):null,cintura:c||null});
     medidas.sort((a,b)=>a.fecha.localeCompare(b.fecha));DB.set("medidas",medidas);render();};
   const bn=document.getElementById("btnNotif");if(bn)bn.onclick=pedirNotif;
   const be=document.getElementById("btnEdit");if(be)be.onclick=()=>{if(ST.edit)guardarEdicion();ST.edit=!ST.edit;render()};
   const br=document.getElementById("btnReset");if(br)br.onclick=resetTodo;
+  document.querySelectorAll("[data-unidad]").forEach(b=>b.onclick=()=>{UNIDAD=b.dataset.unidad;DB.set("unidad",UNIDAD);render();});
 }
 
 render();
