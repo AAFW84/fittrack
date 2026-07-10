@@ -358,6 +358,30 @@ function importarRespaldo(file){
   reader.readAsText(file);
 }
 
+function calcularRacha(){
+  function fechaISO(dt){return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");}
+  function progDia(fecha){
+    const dow=new Date(fecha+"T00:00:00").getDay();
+    const r=RUTINA[dow]||RUTINA[0];
+    if(!r||!r.ej||!r.ej.length)return 0;
+    const l=DB.get("dia:"+fecha)||{done:{},comidas:{},agua:0};
+    const tot=r.ej.length, hechos=r.ej.filter(e=>l.done[e.id]).length;
+    const hcom=DIETA.filter(c=>l.comidas[c.id]).length;
+    return Math.round(((hechos/tot)*0.5+(hcom/DIETA.length)*0.35+(Math.min(l.agua||0,AGUA_META)/AGUA_META)*0.15)*100);
+  }
+  let racha=0;
+  let cursor=new Date();
+  let iso=fechaISO(cursor);
+  if(progDia(iso)>=100)racha++;
+  cursor.setDate(cursor.getDate()-1);
+  for(let i=0;i<400;i++){
+    iso=fechaISO(cursor);
+    if(progDia(iso)>=100){racha++;cursor.setDate(cursor.getDate()-1);}
+    else break;
+  }
+  return racha;
+}
+
 /* ================= HELPERS DE RENDER ================= */
 const el=(h)=>{const d=document.createElement("div");d.innerHTML=h;return d.firstElementChild};
 const esc=(s)=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
@@ -404,6 +428,7 @@ function vHoy(){
   const hcom=DIETA.filter(c=>log.comidas[c.id]).length;
   const prog=Math.round(((hechos/tot)*0.5+(hcom/DIETA.length)*0.35+(Math.min(log.agua,AGUA_META)/AGUA_META)*0.15)*100);
   const per=(medidas.length&&medidas[0].peso&&medidas[medidas.length-1].peso)?fmtPeso(medidas[0].peso-medidas[medidas.length-1].peso).toFixed(1):null;
+  const racha=calcularRacha();
   const R=52,circ=2*Math.PI*R,off=circ*(1-prog/100);
   const ring=`<svg width="130" height="130" viewBox="0 0 130 130">
     <circle cx="65" cy="65" r="${R}" stroke="var(--line)" stroke-width="10" fill="none"/>
@@ -431,6 +456,7 @@ function vHoy(){
       <div style="flex:1">
         <div style="font-size:15px;font-weight:800">${esc(r.titulo)}</div>
         <div class="small" style="margin-top:4px">${hechos}/${tot} ejercicios · ${hcom}/${DIETA.length} comidas · ${log.agua}/${AGUA_META} vasos</div>
+        ${racha>0?`<div style="color:var(--green);font-size:13px;margin-top:4px;font-weight:700">🔥 ${racha} día${racha===1?'':'s'} seguido${racha===1?'':'s'}</div>`:''}
         ${per?`<div style="color:var(--amber);font-size:13px;margin-top:6px;font-weight:700">▼ ${per} ${unidadLabel()} desde el inicio</div>`:""}
       </div></div>
     <div style="display:flex;gap:6px;margin:0 14px;overflow-x:auto;padding-bottom:4px">${tabsDia}</div>
