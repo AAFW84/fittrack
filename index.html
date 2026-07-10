@@ -441,6 +441,19 @@ function resumenSemanal(){
   return {promedio:diasActivos?Math.round(sumaProg/diasActivos):0, diasActivos, diasCompletos, hechosEj, totalEj, totalAgua};
 }
 
+function compartirResumen(){
+  const rs=resumenSemanal();
+  const racha=calcularRacha();
+  const texto='💪 Mi semana en FitTrack\n\n📊 Promedio diario: '+rs.promedio+'%\n✅ Días al 100%: '+rs.diasCompletos+'/7\n🏋️ Ejercicios completados: '+rs.hechosEj+'/'+rs.totalEj+'\n🔥 Racha actual: '+racha+' día(s)';
+  if(navigator.share){
+    navigator.share({title:'Mi progreso en FitTrack',text:texto}).catch(()=>{});
+  }else if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(texto).then(()=>alert('Resumen copiado al portapapeles.')).catch(()=>alert(texto));
+  }else{
+    alert(texto);
+  }
+}
+
 
 /* ================= HELPERS DE RENDER ================= */
 const el=(h)=>{const d=document.createElement("div");d.innerHTML=h;return d.firstElementChild};
@@ -606,7 +619,7 @@ function vProgreso(){
     chart=`<div class="card"><div class="h2">Evolución de peso</div><svg viewBox="0 0 ${W} ${H}" width="100%"><path d="${path}" stroke="var(--green)" stroke-width="3" fill="none"/>${dots}${labs}<text x="4" y="${ys(mx)+4}" font-size="9" fill="var(--mut)">${mx.toFixed(0)}</text><text x="4" y="${ys(mn)+4}" font-size="9" fill="var(--mut)">${mn.toFixed(0)}</text></svg><div style="margin-top:8px">${filas}</div></div>`;
   }
   const metas=METAS.map(m=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px"><span style="color:var(--mut)">${m.n}</span><span><span style="color:var(--mut)">${m.de}</span> <span style="color:var(--green);font-weight:800">→ ${m.a}</span></span></div>`).join("");
-  return `<div class="card"><div class="h2">📊 Resumen semanal</div><div style="display:flex;justify-content:space-between;text-align:center;gap:6px"><div style="flex:1"><div style="font-size:22px;font-weight:900;color:var(--green)">${rs.promedio}%</div><div class="small">Promedio diario</div></div><div style="flex:1"><div style="font-size:22px;font-weight:900;color:var(--green)">${rs.diasCompletos}/7</div><div class="small">Días al 100%</div></div><div style="flex:1"><div style="font-size:22px;font-weight:900;color:var(--green)">${rs.hechosEj}/${rs.totalEj}</div><div class="small">Ejercicios</div></div></div></div><div class="card"><div class="h2">Unidad de peso</div><div style="display:flex;gap:8px"><button class="pill ${UNIDAD==='kg'?'on':''}" data-unidad="kg">Kilogramos (kg)</button><button class="pill ${UNIDAD==='lb'?'on':''}" data-unidad="lb">Libras (lb)</button></div></div><div class="card"><div class="h2">Registrar medición semanal</div>
+  return `<div class="card"><div class="h2">📊 Resumen semanal</div><div style="display:flex;justify-content:space-between;text-align:center;gap:6px"><div style="flex:1"><div style="font-size:22px;font-weight:900;color:var(--green)">${rs.promedio}%</div><div class="small">Promedio diario</div></div><div style="flex:1"><div style="font-size:22px;font-weight:900;color:var(--green)">${rs.diasCompletos}/7</div><div class="small">Días al 100%</div></div><div style="flex:1"><div style="font-size:22px;font-weight:900;color:var(--green)">${rs.hechosEj}/${rs.totalEj}</div><div class="small">Ejercicios</div></div></div><button class="btn2" id="btnCompartir" style="width:100%;margin-top:8px">📤 Compartir resumen</button></div><div class="card"><div class="h2">Unidad de peso</div><div style="display:flex;gap:8px"><button class="pill ${UNIDAD==='kg'?'on':''}" data-unidad="kg">Kilogramos (kg)</button><button class="pill ${UNIDAD==='lb'?'on':''}" data-unidad="lb">Libras (lb)</button></div></div><div class="card"><div class="h2">Registrar medición semanal</div>
       <div style="display:flex;gap:8px;margin-bottom:10px"><input class="inp" id="inPeso" inputmode="decimal" placeholder="Peso (${unidadLabel()})"><input class="inp" id="inCint" inputmode="decimal" placeholder="Cintura (cm)"></div>
       <button class="btn" id="guardarMedida">Guardar medición</button>
       <div class="small" style="margin-top:8px">Ideal: sábado en ayunas, misma báscula, cintura al ombligo.</div></div>
@@ -679,7 +692,7 @@ function wire(){
   const bn=document.getElementById("btnNotif");if(bn)bn.onclick=pedirNotif;
   const be=document.getElementById("btnEdit");if(be)be.onclick=()=>{if(ST.edit)guardarEdicion();ST.edit=!ST.edit;render()};
   const br=document.getElementById("btnReset");if(br)br.onclick=resetTodo;
-  const bex=document.getElementById("btnExportar");if(bex)bex.onclick=exportarRespaldo;
+  const bex=document.getElementById("btnExportar");if(bex)bex.onclick=exportarRespaldo;const bco=document.getElementById("btnCompartir");if(bco)bco.onclick=compartirResumen;
   const bim=document.getElementById("btnImportar");const fim=document.getElementById("inputImportar");
   if(bim&&fim){bim.onclick=()=>fim.click();fim.onchange=(e)=>{if(e.target.files&&e.target.files[0])importarRespaldo(e.target.files[0]);fim.value="";};}
   document.querySelectorAll("[data-unidad]").forEach(b=>b.onclick=()=>{UNIDAD=b.dataset.unidad;DB.set("unidad",UNIDAD);render();});
