@@ -705,9 +705,40 @@ programarRecordatorios();
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>{
     navigator.serviceWorker.register("service-worker.js")
-      .then(()=>{ if(DB.get("notif")) programarRecordatorios(); })
+      .then((reg)=>{
+        if(DB.get("notif")) programarRecordatorios();
+        if(reg.waiting && navigator.serviceWorker.controller) mostrarBannerActualizacion(reg);
+        reg.addEventListener("updatefound",()=>{
+          const nuevo=reg.installing;
+          if(!nuevo) return;
+          nuevo.addEventListener("statechange",()=>{
+            if(nuevo.state==="installed" && navigator.serviceWorker.controller){
+              mostrarBannerActualizacion(reg);
+            }
+          });
+        });
+        setInterval(()=>reg.update().catch(()=>{}), 60*60*1000);
+      })
       .catch((err)=>console.warn("SW no registrado:",err));
+    let recargandoPorActualizacion=false;
+    navigator.serviceWorker.addEventListener("controllerchange",()=>{
+      if(recargandoPorActualizacion) return;
+      recargandoPorActualizacion=true;
+      window.location.reload();
+    });
   });
+}
+function mostrarBannerActualizacion(reg){
+  if(document.getElementById("bannerUpdate")) return;
+  const b=document.createElement("div");
+  b.id="bannerUpdate";
+  b.style.cssText="position:fixed;top:0;left:0;right:0;z-index:100;background:var(--green);color:#0E1113;padding:10px 14px;display:flex;align-items:center;justify-content:center;gap:12px;font-weight:800;font-size:13px;box-shadow:0 2px 12px rgba(0,0,0,.4)";
+  b.innerHTML='<span>🔄 Nueva versión disponible</span><button id="btnActualizarApp" style="background:#0E1113;color:var(--green);border:none;border-radius:8px;padding:6px 14px;font-weight:800;cursor:pointer">Actualizar ahora</button>';
+  document.body.appendChild(b);
+  document.getElementById("btnActualizarApp").onclick=()=>{
+    if(reg.waiting) reg.waiting.postMessage({type:"SKIP_WAITING"});
+    b.remove();
+  };
 }
 </script>
 </body>
