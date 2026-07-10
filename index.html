@@ -328,6 +328,36 @@ function resetTodo(){
   }
 }
 
+function exportarRespaldo(){
+  try{
+    const data={};
+    for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);data[k]=localStorage.getItem(k);}
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    const d=new Date();
+    const fecha=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    a.href=url;a.download="fittrack-respaldo-"+fecha+".json";
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }catch(e){alert("No se pudo exportar el respaldo.");console.error(e);}
+}
+function importarRespaldo(file){
+  const reader=new FileReader();
+  reader.onload=(e)=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data||typeof data!=="object")throw new Error("formato invalido");
+      if(!confirm("¿Restaurar este respaldo? Esto reemplazará todos tus datos actuales guardados en este dispositivo."))return;
+      localStorage.clear();
+      Object.keys(data).forEach(k=>localStorage.setItem(k,data[k]));
+      alert("Respaldo restaurado correctamente. La app se recargará.");
+      location.reload();
+    }catch(err){alert("El archivo no es un respaldo válido de FitTrack.");console.error(err);}
+  };
+  reader.readAsText(file);
+}
+
 /* ================= HELPERS DE RENDER ================= */
 const el=(h)=>{const d=document.createElement("div");d.innerHTML=h;return d.firstElementChild};
 const esc=(s)=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
@@ -481,7 +511,10 @@ function vPlan(){
     <div class="card"><div class="h2">Consejos PRO</div>${consejos}</div>
     <div class="card"><div class="h2">⚙️ Personalización</div>
       <div class="small" style="margin-bottom:10px">El modo edición te deja modificar el menú semanal directamente. Para cambios de rutina o compras avísame y te los ajusto.</div>
-      <button class="btn2" id="btnReset" style="width:100%;color:var(--amber)">↺ Restaurar plan original</button></div>`;
+      <button class="btn2" id="btnReset" style="width:100%;color:var(--amber)">↺ Restaurar plan original</button>
+      <button class="btn2" id="btnExportar" style="width:100%;margin-top:8px">⬇️ Exportar respaldo (JSON)</button>
+      <button class="btn2" id="btnImportar" style="width:100%;margin-top:8px">⬆️ Importar respaldo</button>
+      <input type="file" id="inputImportar" accept="application/json" style="display:none"></div>`;
 }
 
 /* ================= RENDER PRINCIPAL ================= */
@@ -529,6 +562,9 @@ function wire(){
   const bn=document.getElementById("btnNotif");if(bn)bn.onclick=pedirNotif;
   const be=document.getElementById("btnEdit");if(be)be.onclick=()=>{if(ST.edit)guardarEdicion();ST.edit=!ST.edit;render()};
   const br=document.getElementById("btnReset");if(br)br.onclick=resetTodo;
+  const bex=document.getElementById("btnExportar");if(bex)bex.onclick=exportarRespaldo;
+  const bim=document.getElementById("btnImportar");const fim=document.getElementById("inputImportar");
+  if(bim&&fim){bim.onclick=()=>fim.click();fim.onchange=(e)=>{if(e.target.files&&e.target.files[0])importarRespaldo(e.target.files[0]);fim.value="";};}
   document.querySelectorAll("[data-unidad]").forEach(b=>b.onclick=()=>{UNIDAD=b.dataset.unidad;DB.set("unidad",UNIDAD);render();});
 }
 
