@@ -483,6 +483,35 @@ function histHTML(ejId){
 }
 
 /* ================= VISTAS ================= */
+/* ═══════ CALCULADORA DE DISCOS ═══════ */
+function calcDiscos(totalPeso){
+  const barra=UNIDAD==='lb'?45:20;
+  const disponibles=UNIDAD==='lb'?[45,35,25,10,5,2.5]:[25,20,15,10,5,2.5,1.25];
+  const porLado=(totalPeso-barra)/2;
+  if(porLado<=0) return {barra, porLado:0, discos:[], restante:0};
+  let restante=porLado;
+  const discos=[];
+  for(const p of disponibles){
+    while(restante>=p-0.001){
+      discos.push(p);
+      restante-=p;
+    }
+  }
+  return {barra, porLado, discos, restante};
+}
+function discosHTML(ejId){
+  const peso=fmtPeso(log.pesos[ejId]);
+  if(!peso) return '';
+  const {barra,porLado,discos,restante}=calcDiscos(peso);
+  if(porLado<=0) return '';
+  const chips=discos.map(d=>`<span style="background:var(--card2);border:1px solid var(--line);border-radius:6px;padding:3px 7px;font-size:12px;font-weight:700">${d}</span>`).join(' ');
+  const aviso=restante>0.01?`<div class="small" style="color:var(--amber);margin-top:4px">No exacto — sobran ${restante.toFixed(2)} ${unidadLabel()} por lado</div>`:'';
+  return `<div style="background:#12171A;border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:6px">
+    <div class="tag" style="color:var(--mut)">🧮 DISCOS POR LADO (barra ${barra}${unidadLabel()})</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${chips||'<span class="small">Sin discos, solo barra</span>'}</div>${aviso}
+  </div>`;
+}
+
 function vHoy(){
   const r=RUTINA[ST.dow]||RUTINA[0];
   const tot=r.ej.length, hechos=r.ej.filter(e=>log.done[e.id]).length;
@@ -510,7 +539,7 @@ function vHoy(){
         </div>${wk}
       </div>
       ${ST.abierto===e.id?guiaHTML(e.g):""}
-      ${e.peso?histHTML(e.id):""}
+      ${e.peso?histHTML(e.id)+discosHTML(e.id):""}
     </div>`;}).join("");
   return `<div class="card" style="display:flex;align-items:center;gap:16px">
       ${ring}
