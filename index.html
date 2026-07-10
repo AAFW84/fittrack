@@ -382,6 +382,44 @@ function calcularRacha(){
   return racha;
 }
 
+/* ═══════ TEMPORIZADOR DE DESCANSO ═══════ */
+let restInterval=null;
+function ejTienePeso(id){
+  for(const k in RUTINA_DEF){
+    const f=RUTINA_DEF[k].ej.find(e=>e.id===id);
+    if(f) return !!f.peso;
+  }
+  return false;
+}
+function iniciarDescanso(segundos){
+  clearInterval(restInterval);
+  let fin=Date.now()+segundos*1000;
+  let bar=document.getElementById('restBar');
+  if(!bar){
+    bar=document.createElement('div');
+    bar.id='restBar';
+    bar.style.cssText='position:fixed;left:12px;right:12px;bottom:78px;max-width:528px;margin:0 auto;background:var(--card);border:1px solid var(--green);border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;z-index:50;box-shadow:0 4px 16px rgba(0,0,0,.4)';
+    document.body.appendChild(bar);
+  }
+  bar.style.display='flex';
+  function tick(){
+    const rest=Math.max(0,Math.round((fin-Date.now())/1000));
+    if(rest<=0){
+      clearInterval(restInterval);
+      bar.innerHTML='<div style="font-weight:800;font-size:14px;color:var(--green)">✅ ¡Descanso terminado!</div>';
+      if(navigator.vibrate)navigator.vibrate([200,100,200]);
+      setTimeout(()=>{bar.style.display='none';},3000);
+      return;
+    }
+    bar.innerHTML=`<div style="font-weight:800;font-size:14px">⏱️ Descanso: <span style="color:var(--green)">${rest}s</span></div><div style="display:flex;gap:6px"><button id="restAdd" style="background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:12px;color:var(--text)">+15s</button><button id="restStop" style="background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:12px;color:var(--text)">✕</button></div>`;
+    document.getElementById('restAdd').onclick=()=>{fin+=15000;};
+    document.getElementById('restStop').onclick=()=>{clearInterval(restInterval);bar.style.display='none';};
+  }
+  tick();
+  restInterval=setInterval(tick,1000);
+}
+
+
 /* ================= HELPERS DE RENDER ================= */
 const el=(h)=>{const d=document.createElement("div");d.innerHTML=h;return d.firstElementChild};
 const esc=(s)=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
@@ -573,7 +611,7 @@ function wire(){
   document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{ST.tab=b.dataset.tab;ST.abierto=null;if(ST.tab==="hoy")ST.dow=new Date().getDay();render()});
   document.querySelectorAll("[data-dow]").forEach(b=>b.onclick=()=>{ST.dow=+b.dataset.dow;ST.abierto=null;render()});
   document.querySelectorAll("[data-sub]").forEach(b=>b.onclick=()=>{ST.subDieta=b.dataset.sub;ST.edit=false;render()});
-  document.querySelectorAll("[data-ej]").forEach(b=>b.onclick=()=>{const id=b.dataset.ej;log.done[id]=!log.done[id];if(log.done[id]&&log.pesos[id])registrarPeso(id,log.pesos[id]);saveLog();render()});
+  document.querySelectorAll("[data-ej]").forEach(b=>b.onclick=()=>{const id=b.dataset.ej;log.done[id]=!log.done[id];if(log.done[id]&&log.pesos[id])registrarPeso(id,log.pesos[id]);if(log.done[id]&&ejTienePeso(id))iniciarDescanso(90);saveLog();render()});
   document.querySelectorAll("[data-guia]").forEach(b=>b.onclick=()=>{const id=b.dataset.guia;ST.abierto=ST.abierto===id?null:id;render()});
   document.querySelectorAll("[data-wpeso]").forEach(inp=>inp.onchange=()=>{const id=inp.dataset.wpeso;const kgVal=pesoToKg(inp.value);log.pesos[id]=kgVal;saveLog();if(log.done[id])registrarPeso(id,kgVal)});
   document.querySelectorAll("[data-com]").forEach(b=>b.onclick=()=>{const id=b.dataset.com;log.comidas[id]=!log.comidas[id];saveLog();render()});
