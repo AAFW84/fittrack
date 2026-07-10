@@ -1,5 +1,5 @@
 /* FitTrack Service Worker · caché offline + notificaciones */
-const CACHE = "fittrack-v6";
+const CACHE = "fittrack-v7";
 const ASSETS = [
   "./",
   "./index.html",
@@ -13,8 +13,13 @@ const ASSETS = [
 // Instalar: precachear el shell de la app
 self.addEventListener("install", (e) => {
   e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE).then((c) => c.addAll(ASSETS))
   );
+});
+
+// Mensajes: permite activar la actualización cuando el usuario lo confirme
+self.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 // Activar: limpiar cachés viejos
