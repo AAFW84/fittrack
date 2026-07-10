@@ -419,6 +419,28 @@ function iniciarDescanso(segundos){
   restInterval=setInterval(tick,1000);
 }
 
+/* ═══════ RESUMEN SEMANAL ═══════ */
+function resumenSemanal(){
+  function fechaISO(dt){return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');}
+  let sumaProg=0, diasActivos=0, diasCompletos=0, hechosEj=0, totalEj=0, totalAgua=0;
+  let cursor=new Date();
+  for(let i=0;i<7;i++){
+    const fecha=fechaISO(cursor);
+    const dow=new Date(fecha+'T00:00:00').getDay();
+    const r=RUTINA[dow]||RUTINA[0];
+    const l=DB.get('dia:'+fecha);
+    if(l&&r&&r.ej&&r.ej.length){
+      const tot=r.ej.length, hechos=r.ej.filter(e=>l.done&&l.done[e.id]).length;
+      const hcom=DIETA.filter(c=>l.comidas&&l.comidas[c.id]).length;
+      const prog=Math.round(((hechos/tot)*0.5+(hcom/DIETA.length)*0.35+(Math.min(l.agua||0,AGUA_META)/AGUA_META)*0.15)*100);
+      sumaProg+=prog; diasActivos++; hechosEj+=hechos; totalEj+=tot; totalAgua+=(l.agua||0);
+      if(prog>=100) diasCompletos++;
+    }
+    cursor.setDate(cursor.getDate()-1);
+  }
+  return {promedio:diasActivos?Math.round(sumaProg/diasActivos):0, diasActivos, diasCompletos, hechosEj, totalEj, totalAgua};
+}
+
 
 /* ================= HELPERS DE RENDER ================= */
 const el=(h)=>{const d=document.createElement("div");d.innerHTML=h;return d.firstElementChild};
@@ -539,6 +561,7 @@ function vDieta(){
 }
 
 function vProgreso(){
+  const rs=resumenSemanal();
   const filas=medidas.slice().reverse().slice(0,8).map(m=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13.5px"><span style="color:var(--mut)">${m.fecha}</span><span>${m.peso?fmtPeso(m.peso)+' '+unidadLabel():'—'} · ${m.cintura?m.cintura+' cm':'—'}</span></div>`).join("");
   let chart="";
   if(medidas.length){
@@ -554,7 +577,7 @@ function vProgreso(){
     chart=`<div class="card"><div class="h2">Evolución de peso</div><svg viewBox="0 0 ${W} ${H}" width="100%"><path d="${path}" stroke="var(--green)" stroke-width="3" fill="none"/>${dots}${labs}<text x="4" y="${ys(mx)+4}" font-size="9" fill="var(--mut)">${mx.toFixed(0)}</text><text x="4" y="${ys(mn)+4}" font-size="9" fill="var(--mut)">${mn.toFixed(0)}</text></svg><div style="margin-top:8px">${filas}</div></div>`;
   }
   const metas=METAS.map(m=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px"><span style="color:var(--mut)">${m.n}</span><span><span style="color:var(--mut)">${m.de}</span> <span style="color:var(--green);font-weight:800">→ ${m.a}</span></span></div>`).join("");
-  return `<div class="card"><div class="h2">Unidad de peso</div><div style="display:flex;gap:8px"><button class="pill ${UNIDAD==='kg'?'on':''}" data-unidad="kg">Kilogramos (kg)</button><button class="pill ${UNIDAD==='lb'?'on':''}" data-unidad="lb">Libras (lb)</button></div></div><div class="card"><div class="h2">Registrar medición semanal</div>
+  return `<div class="card"><div class="h2">📊 Resumen semanal</div><div style="display:flex;justify-content:space-between;text-align:center;gap:6px"><div style="flex:1"><div style="font-size:22px;font-weight:900;color:var(--green)">${rs.promedio}%</div><div class="small">Promedio diario</div></div><div style="flex:1"><div style="font-size:22px;font-weight:900;color:var(--green)">${rs.diasCompletos}/7</div><div class="small">Días al 100%</div></div><div style="flex:1"><div style="font-size:22px;font-weight:900;color:var(--green)">${rs.hechosEj}/${rs.totalEj}</div><div class="small">Ejercicios</div></div></div></div><div class="card"><div class="h2">Unidad de peso</div><div style="display:flex;gap:8px"><button class="pill ${UNIDAD==='kg'?'on':''}" data-unidad="kg">Kilogramos (kg)</button><button class="pill ${UNIDAD==='lb'?'on':''}" data-unidad="lb">Libras (lb)</button></div></div><div class="card"><div class="h2">Registrar medición semanal</div>
       <div style="display:flex;gap:8px;margin-bottom:10px"><input class="inp" id="inPeso" inputmode="decimal" placeholder="Peso (${unidadLabel()})"><input class="inp" id="inCint" inputmode="decimal" placeholder="Cintura (cm)"></div>
       <button class="btn" id="guardarMedida">Guardar medición</button>
       <div class="small" style="margin-top:8px">Ideal: sábado en ayunas, misma báscula, cintura al ombligo.</div></div>
